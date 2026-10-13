@@ -2072,16 +2072,17 @@ class MyKeyboardView @JvmOverloads constructor(
             val pinnedClips = context.clipsDB.getPinnedClips()
             val recentClips = context.clipsDB.getRecentClips()
 
-            if (recentClips.isNotEmpty()) {
-                val section = ClipsSectionLabel(context.getString(R.string.recent_clips), false)
-                clips.add(section)
-                clips.addAll(recentClips)
-            }
-
+            // Pinned clips appear at the top of the clipboard
             if (pinnedClips.isNotEmpty()) {
                 val section = ClipsSectionLabel(context.getString(R.string.pinned_clips), false)
                 clips.add(section)
                 clips.addAll(pinnedClips)
+            }
+
+            if (recentClips.isNotEmpty()) {
+                val section = ClipsSectionLabel(context.getString(R.string.recent_clips), false)
+                clips.add(section)
+                clips.addAll(recentClips)
             }
 
             Handler(Looper.getMainLooper()).post {
@@ -2104,7 +2105,7 @@ class MyKeyboardView @JvmOverloads constructor(
         }
 
         val adapter = ClipsKeyboardAdapter(
-            context = safeStorageContext,
+            context = context,
             items = clips,
             refreshClipsListener = refreshClipsListener
         ) { clip ->

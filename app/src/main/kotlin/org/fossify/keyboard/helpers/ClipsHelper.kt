@@ -45,10 +45,14 @@ class ClipsHelper(val context: Context) {
         val trimmed = clip.value.trim()
         if (trimmed.isEmpty()) return -1L
         clearDeletedText(trimmed)
-        return if (context.clipsDB.getClipWithValue(trimmed) == null) {
+        val existingId = context.clipsDB.getClipWithValue(trimmed)
+        return if (clip.id != null) {
+            context.clipsDB.insertOrUpdate(clip.copy(value = trimmed))
+        } else if (existingId == null) {
             context.clipsDB.insertOrUpdate(clip.copy(value = trimmed))
         } else {
-            -1L
+            context.clipsDB.updatePinned(existingId, clip.isPinned)
+            existingId
         }
     }
 }

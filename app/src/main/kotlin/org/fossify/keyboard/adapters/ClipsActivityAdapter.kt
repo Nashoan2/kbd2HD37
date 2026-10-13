@@ -51,7 +51,13 @@ class ClipsActivityAdapter(
     override fun getActionMenuId() = R.menu.cab_clips
 
     override fun prepareActionMode(menu: Menu) {
+        val selectedClips = getSelectedItems()
+        val allPinned = selectedClips.isNotEmpty() && selectedClips.all { it.isPinned }
         menu.apply {
+            findItem(R.id.cab_pin)?.apply {
+                setTitle(if (allPinned) R.string.unpin_text else R.string.pin_text)
+                setIcon(if (allPinned) R.drawable.ic_pin_outline_gray else R.drawable.ic_pin_cyan)
+            }
             findItem(R.id.cab_edit).isVisible = isOneItemSelected()
         }
     }
@@ -62,6 +68,7 @@ class ClipsActivityAdapter(
         }
 
         when (id) {
+            R.id.cab_pin -> togglePinSelected()
             R.id.cab_edit -> editClip()
             R.id.cab_delete -> askConfirmDelete()
         }
@@ -173,6 +180,13 @@ class ClipsActivityAdapter(
             clipValue.setTextColor(textColor)
             clipDragHandle.applyColorFilter(textColor)
 
+            clipPinBtn.apply {
+                setImageResource(if (clip.isPinned) R.drawable.ic_pin_cyan else R.drawable.ic_pin_outline_gray)
+                setOnClickListener {
+                    togglePin(clip)
+                }
+            }
+
             clipDragHandle.beVisibleIf(selectedKeys.isNotEmpty())
             clipHolder.isSelected = isSelected
             clipDragHandle.setOnTouchListener { v, event ->
@@ -180,6 +194,37 @@ class ClipsActivityAdapter(
                     startReorderDragListener.requestDrag(holder)
                 }
                 false
+            }
+        }
+    }
+
+    private fun togglePin(clip: Clip) {
+        ensureBackgroundThread {
+            val newPinned = !clip.isPinned
+            if (clip.id != null) {
+                activity.clipsDB.updatePinned(clip.id!!, newPinned)
+            }
+            activity.runOnUiThread {
+                activity.toast(if (newPinned) R.string.text_pinned else R.string.text_unpinned)
+                listener.refreshItems()
+            }
+        }
+    }
+
+    private fun togglePinSelected() {
+        val selectedClips = getSelectedItems()
+        val anyUnpinned = selectedClips.any { !it.isPinned }
+        val targetPinState = anyUnpinned
+        ensureBackgroundThread {
+            selectedClips.forEach { clip ->
+                if (clip.id != null) {
+                    activity.clipsDB.updatePinned(clip.id!!, targetPinState)
+                }
+            }
+            activity.runOnUiThread {
+                activity.toast(if (targetPinState) R.string.text_pinned else R.string.text_unpinned)
+                listener.refreshItems()
+                finishActMode()
             }
         }
     }

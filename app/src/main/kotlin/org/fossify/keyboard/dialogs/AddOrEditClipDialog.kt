@@ -17,6 +17,9 @@ class AddOrEditClipDialog(val activity: BaseSimpleActivity, val originalClip: Cl
         val binding = DialogAddOrEditClipBinding.inflate(activity.layoutInflater).apply {
             if (originalClip != null) {
                 addClipValue.setText(originalClip.value)
+                addClipIsPinned.isChecked = originalClip.isPinned
+            } else {
+                addClipIsPinned.isChecked = true
             }
         }
 
@@ -27,16 +30,14 @@ class AddOrEditClipDialog(val activity: BaseSimpleActivity, val originalClip: Cl
                 activity.setupDialogStuff(binding.root, this) { alertDialog ->
                     alertDialog.showKeyboard(binding.addClipValue)
                     alertDialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                        val clipValue = binding.addClipValue.text.toString()
+                        val clipValue = binding.addClipValue.text.toString().trim()
                         if (clipValue.isEmpty()) {
                             activity.toast(R.string.value_cannot_be_empty)
                             return@setOnClickListener
                         }
 
-                        val clip = Clip(null, clipValue)
-                        if (originalClip != null) {
-                            clip.id = originalClip.id
-                        }
+                        val isPinned = binding.addClipIsPinned.isChecked
+                        val clip = Clip(originalClip?.id, clipValue, isPinned)
 
                         ensureBackgroundThread {
                             ClipsHelper(activity).insertClip(clip)

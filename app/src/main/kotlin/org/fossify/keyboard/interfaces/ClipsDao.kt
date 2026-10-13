@@ -8,7 +8,7 @@ import org.fossify.keyboard.models.Clip
 
 @Dao
 interface ClipsDao {
-    @Query("SELECT * FROM clips ORDER BY is_pinned ASC, id DESC")
+    @Query("SELECT * FROM clips ORDER BY is_pinned DESC, id DESC")
     fun getClips(): List<Clip>
 
     @Query("SELECT * FROM clips WHERE is_pinned = 1 ORDER BY id DESC")

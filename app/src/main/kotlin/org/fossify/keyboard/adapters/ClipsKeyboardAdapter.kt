@@ -14,6 +14,8 @@ import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.PopupWindow
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.view.ContextThemeWrapper
 import androidx.appcompat.widget.TooltipCompat
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
@@ -28,6 +30,8 @@ import org.fossify.keyboard.databinding.ItemClipOnKeyboardBinding
 import org.fossify.keyboard.databinding.ItemSectionLabelBinding
 import org.fossify.keyboard.extensions.clipsDB
 import org.fossify.keyboard.extensions.getCurrentClip
+import org.fossify.keyboard.extensions.getKeyboardDialogBuilder
+import org.fossify.keyboard.extensions.setupKeyboardDialogStuff
 import org.fossify.keyboard.helpers.ClipsHelper
 import org.fossify.keyboard.helpers.ITEM_CLIP
 import org.fossify.keyboard.helpers.ITEM_SECTION_LABEL
@@ -92,7 +96,7 @@ class ClipsKeyboardAdapter(
             }
 
             root.setOnLongClickListener {
-                showClipOptionsPopup(clip, view)
+                showClipOptionsPopup(clip, it)
                 true
             }
 
@@ -101,25 +105,34 @@ class ClipsKeyboardAdapter(
             }
 
             clipValue.setOnLongClickListener {
-                showClipOptionsPopup(clip, view)
+                showClipOptionsPopup(clip, it)
                 true
             }
 
             clipPinIndicator.setOnClickListener {
-                showClipOptionsPopup(clip, view)
+                togglePinClip(clip)
             }
         }
     }
 
-    private fun togglePinClip(clip: Clip) {
+    fun togglePinClip(clip: Clip) {
         ensureBackgroundThread {
             val newPinned = !clip.isPinned
+            val trimmedValue = clip.value.trim()
             if (clip.id != null && clip.id != -1L) {
                 context.clipsDB.updatePinned(clip.id!!, newPinned)
             } else {
-                val newClip = Clip(null, clip.value, newPinned)
-                ClipsHelper(context).insertClip(newClip)
+                val existingId = context.clipsDB.getClipWithValue(trimmedValue)
+                if (existingId != null) {
+                    context.clipsDB.updatePinned(existingId, newPinned)
+                    clip.id = existingId
+                } else {
+                    val newClip = Clip(null, trimmedValue, newPinned)
+                    val newId = context.clipsDB.insertOrUpdate(newClip)
+                    clip.id = newId
+                }
             }
+            clip.isPinned = newPinned
             Handler(Looper.getMainLooper()).post {
                 context.toast(if (newPinned) R.string.text_pinned else R.string.text_unpinned)
                 refreshClipsListener.refreshClips()
@@ -137,6 +150,8 @@ class ClipsKeyboardAdapter(
         ensureBackgroundThread {
             if (clip.id != null && clip.id != -1L) {
                 context.clipsDB.delete(clip.id!!)
+            } else {
+                context.clipsDB.deleteRecentClipWithValue(clip.value.trim())
             }
             Handler(Looper.getMainLooper()).post {
                 refreshClipsListener.refreshClips()
@@ -145,21 +160,11 @@ class ClipsKeyboardAdapter(
     }
 
     /**
-     * Shows a persistent options popup that does NOT disappear when lifting the finger.
+     * Shows a persistent options dialog on long press that allows Pinning, Unpinning, or Deleting.
      */
     fun showClipOptionsPopup(clip: Clip, anchorView: View) {
-        val popupView = layoutInflater.inflate(R.layout.dialog_clip_options, null)
-
-        val popup = PopupWindow(
-            popupView,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            ViewGroup.LayoutParams.WRAP_CONTENT,
-            true
-        ).apply {
-            elevation = 20f
-            setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
-            isOutsideTouchable = true
-        }
+        val uiContext = ContextThemeWrapper(anchorView.context, R.style.MyKeyboard_Alert)
+        val popupView = LayoutInflater.from(uiContext).inflate(R.layout.dialog_clip_options, null)
 
         val clipTextPreview = popupView.findViewById<TextView>(R.id.popup_clip_preview)
         val btnPin = popupView.findViewById<View>(R.id.popup_btn_pin)
@@ -177,21 +182,72 @@ class ClipsKeyboardAdapter(
             pinIcon.setImageResource(R.drawable.ic_pin_outline_gray)
         }
 
+        var alertDialog: AlertDialog? = null
+        var popupWindow: PopupWindow? = null
+
+        val dismissOptions = {
+            try {
+                alertDialog?.dismiss()
+            } catch (ignored: Exception) {}
+            try {
+                popupWindow?.dismiss()
+            } catch (ignored: Exception) {}
+        }
+
         btnPin.setOnClickListener {
-            popup.dismiss()
+            dismissOptions()
             togglePinClip(clip)
         }
 
         btnDelete.setOnClickListener {
-            popup.dismiss()
+            dismissOptions()
             deleteClip(clip)
         }
 
         btnCancel.setOnClickListener {
-            popup.dismiss()
+            dismissOptions()
         }
 
-        popup.showAtLocation(anchorView, Gravity.CENTER, 0, 0)
+        val windowToken = anchorView.windowToken
+        var shownAsDialog = false
+        if (windowToken != null) {
+            try {
+                val builder = uiContext.getKeyboardDialogBuilder()
+                uiContext.setupKeyboardDialogStuff(
+                    windowToken = windowToken,
+                    view = popupView,
+                    dialog = builder,
+                    cancelOnTouchOutside = true
+                ) { dialog ->
+                    alertDialog = dialog
+                    dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+                }
+                shownAsDialog = true
+            } catch (e: Exception) {
+                shownAsDialog = false
+            }
+        }
+
+        if (!shownAsDialog) {
+            try {
+                val density = uiContext.resources.displayMetrics.density
+                val widthPx = (300 * density).toInt()
+                popupWindow = PopupWindow(
+                    popupView,
+                    widthPx,
+                    ViewGroup.LayoutParams.WRAP_CONTENT,
+                    false
+                ).apply {
+                    elevation = 20f
+                    setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+                    isOutsideTouchable = true
+                    showAtLocation(anchorView, Gravity.CENTER, 0, 0)
+                }
+            } catch (e: Exception) {
+                // Fallback: toggle pin directly if popup cannot be shown
+                togglePinClip(clip)
+            }
+        }
     }
 
     @SuppressLint("UseCompatLoadingForDrawables")
@@ -209,16 +265,6 @@ class ClipsKeyboardAdapter(
         fun bindView(any: Any, callback: (itemView: View) -> Unit): View {
             return itemView.apply {
                 callback(this)
-
-                if (any is Clip) {
-                    setOnClickListener {
-                        itemClick.invoke(any)
-                    }
-                    setOnLongClickListener {
-                        showClipOptionsPopup(any, it)
-                        true
-                    }
-                }
             }
         }
     }

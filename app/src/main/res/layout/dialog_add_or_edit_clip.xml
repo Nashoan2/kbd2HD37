@@ -21,4 +21,14 @@
             android:textSize="@dimen/bigger_text_size" />
 
     </org.fossify.commons.views.MyTextInputLayout>
+
+    <CheckBox
+        android:id="@+id/add_clip_is_pinned"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/add_clip_hint"
+        android:layout_marginStart="@dimen/activity_margin"
+        android:layout_marginTop="@dimen/small_margin"
+        android:layout_marginEnd="@dimen/activity_margin"
+        android:text="@string/pin_text" />
 </RelativeLayout>
