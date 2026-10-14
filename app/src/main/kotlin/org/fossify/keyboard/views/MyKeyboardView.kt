@@ -208,6 +208,7 @@ class MyKeyboardView @JvmOverloads constructor(
     private var ignoreTouches = false
 
     private var mKeyBackground: Drawable? = null
+    private var mSpaceKeyBackground: Drawable? = null
     private var mShowKeyBorders: Boolean = false
     private var mUsingSystemTheme: Boolean = true
     private var mVoiceInputMethod: String = ""
@@ -275,6 +276,7 @@ class MyKeyboardView @JvmOverloads constructor(
 
         mPopupLayout = R.layout.keyboard_popup_keyboard
         mKeyBackground = resources.getDrawable(R.drawable.keyboard_key_selector, context.theme)
+        mSpaceKeyBackground = resources.getDrawable(R.drawable.keyboard_space_background, context.theme)
         mVerticalCorrection = resources.getDimension(R.dimen.vertical_correction).toInt()
         mLabelTextSize = resources.getDimension(R.dimen.label_text_size).toInt()
         mSpaceBarTextSize = resources.getDimension(R.dimen.space_bar_text_size).toInt()
@@ -694,11 +696,11 @@ class MyKeyboardView @JvmOverloads constructor(
 
     fun setupKeyboard(changedView: View? = null) {
         with(safeStorageContext) {
-            mTextColor = Color.WHITE
-            mBackgroundColor = Color.parseColor("#111622")
-            mKeyboardBackgroundColor = Color.parseColor("#111622")
-            mPrimaryColor = Color.parseColor("#00BCD4")
-            mStrokeColor = Color.parseColor("#202737")
+            mTextColor = Color.parseColor("#00E5FF")
+            mBackgroundColor = Color.parseColor("#081022")
+            mKeyboardBackgroundColor = Color.parseColor("#081022")
+            mPrimaryColor = Color.parseColor("#00E5FF")
+            mStrokeColor = Color.parseColor("#00D2FF")
 
             mShowKeyBorders = true
             mUsingSystemTheme = false
@@ -706,10 +708,11 @@ class MyKeyboardView @JvmOverloads constructor(
         }
 
         val isMainKeyboard = changedView == null || changedView.id != R.id.mini_keyboard_view
-        mKeyColor = Color.parseColor("#0B1626")
-        mKeyColorPressed = Color.parseColor("#162842")
+        mKeyColor = Color.parseColor("#071026")
+        mKeyColorPressed = Color.parseColor("#142646")
         mShowKeyBorders = true
         mKeyBackground = resources.getDrawable(R.drawable.keyboard_key_selector_outlined, context.theme)
+        mSpaceKeyBackground = resources.getDrawable(R.drawable.keyboard_space_background, context.theme)
 
         if (!isMainKeyboard) {
             val previewBackground = background as LayerDrawable
@@ -719,7 +722,7 @@ class MyKeyboardView @JvmOverloads constructor(
                 .applyColorFilter(mStrokeColor)
             background = previewBackground
         } else {
-            background = ColorDrawable(Color.parseColor("#060B14"))
+            background = ColorDrawable(Color.parseColor("#081022"))
         }
 
         keyboardViewBinding?.apply {
@@ -728,23 +731,24 @@ class MyKeyboardView @JvmOverloads constructor(
             toolbarIconsContainer.layoutDirection = View.LAYOUT_DIRECTION_LTR
             mToolbarHolder?.background = resources.getDrawable(R.drawable.bg_toolbar_neon, context.theme)
 
-            toolbarSticker.applyColorFilter(Color.WHITE)
-            toolbarEmoji.applyColorFilter(Color.WHITE)
+            val neonIconColor = Color.parseColor("#00E5FF")
+            toolbarSticker.applyColorFilter(neonIconColor)
+            toolbarEmoji.applyColorFilter(neonIconColor)
             if (mVoiceManager.isListening) {
                 voiceInputActiveBg.visibility = View.VISIBLE
                 voiceInputButton.applyColorFilter(Color.parseColor("#FF4444"))
             } else {
                 voiceInputActiveBg.visibility = View.GONE
-                voiceInputButton.applyColorFilter(Color.WHITE)
+                voiceInputButton.applyColorFilter(neonIconColor)
             }
-            toolbarCursor.applyColorFilter(Color.WHITE)
-            pinnedClipboardItems.applyColorFilter(Color.WHITE)
-            toolbarCollapse.applyColorFilter(Color.WHITE)
+            toolbarCursor.applyColorFilter(neonIconColor)
+            pinnedClipboardItems.applyColorFilter(neonIconColor)
+            toolbarCollapse.applyColorFilter(neonIconColor)
 
             mToolbarHolder?.beInvisibleIf(context.isDeviceLocked)
 
             topClipboardDivider.beGone()
-            clipboardManagerHolder.background = ColorDrawable(Color.parseColor("#060B14"))
+            clipboardManagerHolder.background = ColorDrawable(Color.parseColor("#081022"))
             clipboardManagerHolder.layoutDirection = View.LAYOUT_DIRECTION_LTR
 
             val isArabic = context.config.keyboardLanguage == LANGUAGE_ARABIC
@@ -924,12 +928,9 @@ class MyKeyboardView @JvmOverloads constructor(
                 val startX = (key.width - lineWidth) / 2f
                 canvas.drawLine(startX, lineY, startX + lineWidth, lineY, linePaint)
             }
-            val isCyanKey = label == "AR" || label == "EN"
-            val textColor = when {
-                key.pressed -> if (isCyanKey) Color.parseColor("#8000E5FF") else Color.WHITE.adjustAlpha(0.6f)
-                isCyanKey -> Color.parseColor("#00E5FF")
-                else -> Color.WHITE
-            }
+            val neonCyan = Color.parseColor("#00E5FF")
+            val neonCyanPressed = Color.parseColor("#8000E5FF")
+            val textColor = if (key.pressed) neonCyanPressed else neonCyan
 
             // Switch the character to uppercase if shift is pressed
             if (label?.isNotEmpty() == true) {
@@ -968,7 +969,7 @@ class MyKeyboardView @JvmOverloads constructor(
                     smallLetterPaint.color = if (key.pressed) {
                         textColor
                     } else {
-                        smallLetterPaint.color
+                        Color.parseColor("#8000E5FF")
                     }
 
                     canvas.drawText(
@@ -995,7 +996,7 @@ class MyKeyboardView @JvmOverloads constructor(
                 }
 
                 if (code == KEYCODE_ENTER) {
-                    val enterColor = if (key.pressed) Color.WHITE.adjustAlpha(0.6f) else Color.WHITE
+                    val enterColor = if (key.pressed) neonCyanPressed else neonCyan
                     key.icon!!.applyColorFilter(enterColor)
                     key.secondaryIcon?.applyColorFilter(enterColor.adjustAlpha(0.6f))
                 } else if (code == KEYCODE_DELETE) {
@@ -1013,7 +1014,7 @@ class MyKeyboardView @JvmOverloads constructor(
                         if (key.pressed) {
                             textColor
                         } else {
-                            mTextColor.adjustAlpha(0.6f)
+                            textColor.adjustAlpha(0.6f)
                         }
                     )
                 }
@@ -1064,7 +1065,11 @@ class MyKeyboardView @JvmOverloads constructor(
     }
 
     private fun setupKeyBackground(key: MyKeyboard.Key, keyCode: Int, canvas: Canvas) {
-        val keyBackground = mKeyBackground ?: return
+        val keyBackground = if (keyCode == KEYCODE_SPACE) {
+            mSpaceKeyBackground ?: mKeyBackground
+        } else {
+            mKeyBackground
+        } ?: return
 
         val bounds = keyBackground.bounds
         if (key.width != bounds.right || key.height != bounds.bottom) {

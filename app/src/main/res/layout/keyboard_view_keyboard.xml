@@ -4,7 +4,7 @@
     android:id="@+id/keyboard_holder"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:background="#060B14"
+    android:background="#081022"
     android:layoutDirection="ltr"
     android:paddingStart="1dp"
     android:paddingEnd="1dp"
@@ -637,7 +637,7 @@
                     android:background="@drawable/bg_cursor_panel_key"
                     android:gravity="center"
                     android:text="حافظة\nالنصوص"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#00E5FF"
                     android:textSize="13sp"
                     android:textStyle="bold" />
 
@@ -665,7 +665,7 @@
                     android:background="@drawable/bg_cursor_panel_key"
                     android:gravity="center"
                     android:text="الكل"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#00E5FF"
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
@@ -680,7 +680,7 @@
                     android:background="@drawable/bg_cursor_panel_key"
                     android:gravity="center"
                     android:text="نسخ"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#00E5FF"
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
@@ -731,7 +731,7 @@
                     android:background="@drawable/bg_cursor_panel_key"
                     android:gravity="center"
                     android:text="تحديد"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#00E5FF"
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
@@ -759,7 +759,7 @@
                     android:background="@drawable/bg_cursor_panel_key"
                     android:gravity="center"
                     android:text="قص"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#00E5FF"
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
@@ -803,7 +803,7 @@
                         android:background="@drawable/bg_cursor_abc_key"
                         android:gravity="center"
                         android:text="ABC"
-                        android:textColor="#FFFFFF"
+                        android:textColor="#00E5FF"
                         android:textSize="14sp"
                         android:textStyle="bold" />
                 </FrameLayout>
@@ -832,7 +832,7 @@
                     android:background="@drawable/bg_cursor_panel_key"
                     android:gravity="center"
                     android:text="إنهاء"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#00E5FF"
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
@@ -847,7 +847,7 @@
                     android:background="@drawable/bg_cursor_panel_key"
                     android:gravity="center"
                     android:text="لصق"
-                    android:textColor="#FFFFFF"
+                    android:textColor="#00E5FF"
                     android:textSize="15sp"
                     android:textStyle="bold" />
 
@@ -912,7 +912,7 @@
                 android:background="@drawable/bg_key_operator"
                 android:gravity="center"
                 android:text="-"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -925,7 +925,7 @@
                 android:background="@drawable/bg_key_neon"
                 android:gravity="center"
                 android:text="1"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -938,7 +938,7 @@
                 android:background="@drawable/bg_key_neon"
                 android:gravity="center"
                 android:text="2"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -951,7 +951,7 @@
                 android:background="@drawable/bg_key_neon"
                 android:gravity="center"
                 android:text="3"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -964,7 +964,7 @@
                 android:background="@drawable/bg_key_operator"
                 android:gravity="center"
                 android:text="%"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="22sp"
                 android:textStyle="bold" />
         </LinearLayout>
@@ -986,7 +986,7 @@
                 android:background="@drawable/bg_key_operator"
                 android:gravity="center"
                 android:text="*"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -999,7 +999,7 @@
                 android:background="@drawable/bg_key_neon"
                 android:gravity="center"
                 android:text="4"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -1012,7 +1012,7 @@
                 android:background="@drawable/bg_key_neon"
                 android:gravity="center"
                 android:text="5"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -1025,7 +1025,7 @@
                 android:background="@drawable/bg_key_neon"
                 android:gravity="center"
                 android:text="6"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -1063,7 +1063,7 @@
                 android:background="@drawable/bg_key_operator"
                 android:gravity="center"
                 android:text="/"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="26sp"
                 android:textStyle="bold" />
 
@@ -1076,7 +1076,7 @@
                 android:background="@drawable/bg_key_neon"
                 android:gravity="center"
                 android:text="7"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -1089,7 +1089,7 @@
                 android:background="@drawable/bg_key_neon"
                 android:gravity="center"
                 android:text="8"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -1102,7 +1102,7 @@
                 android:background="@drawable/bg_key_neon"
                 android:gravity="center"
                 android:text="9"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -1140,7 +1140,7 @@
                 android:background="@drawable/bg_key_operator"
                 android:gravity="center"
                 android:text="ABC"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="15sp"
                 android:textStyle="bold" />
 
@@ -1153,7 +1153,7 @@
                 android:background="@drawable/bg_key_neon"
                 android:gravity="center"
                 android:text="!?#&amp;"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="19sp"
                 android:textStyle="bold" />
 
@@ -1166,7 +1166,7 @@
                 android:background="@drawable/bg_key_neon"
                 android:gravity="center"
                 android:text="0"
-                android:textColor="#FFFFFF"
+                android:textColor="#00E5FF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
 
@@ -1187,7 +1187,7 @@
                     android:background="@drawable/bg_key_neon"
                     android:gravity="center"
                     android:text="="
-                    android:textColor="#FFFFFF"
+                    android:textColor="#00E5FF"
                     android:textSize="24sp"
                     android:textStyle="bold" />
 
@@ -1200,7 +1200,7 @@
                     android:background="@drawable/bg_key_neon"
                     android:gravity="center"
                     android:text="."
-                    android:textColor="#FFFFFF"
+                    android:textColor="#00E5FF"
                     android:textSize="32sp"
                     android:textStyle="bold" />
             </LinearLayout>

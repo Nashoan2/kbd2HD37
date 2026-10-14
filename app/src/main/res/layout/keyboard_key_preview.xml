@@ -4,5 +4,5 @@
     android:background="@drawable/minikeyboard_background"
     android:gravity="center"
     android:includeFontPadding="false"
-    android:textColor="@color/md_grey_white"
+    android:textColor="#00E5FF"
     android:textSize="24sp" />
