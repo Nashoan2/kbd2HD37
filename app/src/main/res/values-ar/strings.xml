@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="change_keyboard">تغيير لوحة المفاتيح</string>
+    <string name="set_as_default_keyboard">تعيين كلوحة مفاتيح افتراضية</string>
+    <string name="default_keyboard_note">لنسخ النصوص أثناء إخفاء الكيبورد، يرجى تعيين التطبيق كلوحة المفاتيح الافتراضية للجهاز.</string>
     <string name="manage_clipboard_items">إدارة عناصر الحافظة</string>
     <string name="manage_clipboard_empty">سجل الحافظة فارغ.</string>
     <string name="manage_clipboard_label">بمجرد نسخ بعض النص ، سيظهر هنا. يمكنك أيضًا تثبيت المقاطع حتى لا تختفي لاحقًا.</string>

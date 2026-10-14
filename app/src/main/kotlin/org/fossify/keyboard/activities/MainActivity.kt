@@ -1,9 +1,13 @@
 package org.fossify.keyboard.activities
 
 import android.content.Intent
+import android.database.ContentObserver
 import android.graphics.drawable.LayerDrawable
 import android.graphics.drawable.RippleDrawable
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.provider.Settings
 import org.fossify.commons.dialogs.ConfirmationAdvancedDialog
 import org.fossify.commons.extensions.appLaunched
@@ -23,6 +27,7 @@ import org.fossify.keyboard.extensions.inputMethodManager
 
 class MainActivity : SimpleActivity() {
     private val binding by viewBinding(ActivityMainBinding::inflate)
+    private var imeObserver: ContentObserver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,6 +35,7 @@ class MainActivity : SimpleActivity() {
         appLaunched(BuildConfig.APPLICATION_ID)
         setupOptionsMenu()
         refreshMenuItems()
+        registerImeObserver()
 
         binding.apply {
             setupEdgeToEdge(padBottomSystem = listOf(mainNestedScrollview))
@@ -110,6 +116,11 @@ class MainActivity : SimpleActivity() {
         binding.changeKeyboard.apply {
             background = applyBackground
             setTextColor(getProperPrimaryColor().getContrastColor())
+            text = if (isKeyboardDefault()) {
+                getString(R.string.change_keyboard)
+            } else {
+                getString(R.string.set_as_default_keyboard)
+            }
         }
     }
 
@@ -117,5 +128,42 @@ class MainActivity : SimpleActivity() {
         return inputMethodManager.enabledInputMethodList.any {
             it.settingsActivity == SettingsActivity::class.java.canonicalName
         }
+    }
+
+    private fun isKeyboardDefault(): Boolean {
+        return try {
+            val defaultIme = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) ?: ""
+            defaultIme.contains(packageName)
+        } catch (e: Exception) {
+            false
+        }
+    }
+
+    private fun registerImeObserver() {
+        if (imeObserver != null) return
+        imeObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                super.onChange(selfChange, uri)
+                updateChangeKeyboardColor()
+            }
+        }
+        try {
+            val uri = Settings.Secure.getUriFor(Settings.Secure.DEFAULT_INPUT_METHOD)
+            contentResolver.registerContentObserver(uri, false, imeObserver!!)
+        } catch (ignored: Exception) {
+        }
+    }
+
+    private fun unregisterImeObserver() {
+        try {
+            imeObserver?.let { contentResolver.unregisterContentObserver(it) }
+            imeObserver = null
+        } catch (ignored: Exception) {
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterImeObserver()
     }
 }

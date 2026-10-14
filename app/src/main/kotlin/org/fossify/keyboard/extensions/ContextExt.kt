@@ -64,8 +64,18 @@ val Context.clipsDB: ClipsDao
     get() = ClipsDatabase.getInstance(applicationContext.safeStorageContext).ClipsDao()
 
 fun Context.getCurrentClip(): String? {
-    val clipboardManager = (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
-    return clipboardManager.primaryClip?.getItemAt(0)?.text?.toString()
+    return try {
+        val clipboardManager = (getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager) ?: return null
+        val clip = clipboardManager.primaryClip ?: return null
+        if (clip.itemCount > 0) {
+            val item = clip.getItemAt(0)
+            item?.text?.toString()?.trim() ?: item?.coerceToText(this)?.toString()?.trim()
+        } else {
+            null
+        }
+    } catch (e: Exception) {
+        null
+    }
 }
 
 fun Context.getKeyboardDialogBuilder() = if (safeStorageContext.isDynamicTheme()) {

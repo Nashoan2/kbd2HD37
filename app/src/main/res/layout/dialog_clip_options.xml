@@ -3,7 +3,7 @@
     android:layout_width="300dp"
     android:layout_height="wrap_content"
     android:layoutDirection="rtl"
-    android:background="@drawable/bg_toolbar_neon"
+    android:background="@drawable/dialog_clip_options_neon"
     android:orientation="vertical"
     android:padding="16dp">
 

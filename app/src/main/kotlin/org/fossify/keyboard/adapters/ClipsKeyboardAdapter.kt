@@ -208,7 +208,7 @@ class ClipsKeyboardAdapter(
             dismissOptions()
         }
 
-        val windowToken = anchorView.windowToken
+        val windowToken = anchorView.windowToken ?: anchorView.rootView?.windowToken
         var shownAsDialog = false
         if (windowToken != null) {
             try {
@@ -238,10 +238,11 @@ class ClipsKeyboardAdapter(
                     ViewGroup.LayoutParams.WRAP_CONTENT,
                     false
                 ).apply {
-                    elevation = 20f
+                    elevation = 24f
                     setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
                     isOutsideTouchable = true
-                    showAtLocation(anchorView, Gravity.CENTER, 0, 0)
+                    val anchor = if (anchorView.isAttachedToWindow) anchorView else anchorView.rootView
+                    showAtLocation(anchor, Gravity.CENTER, 0, 0)
                 }
             } catch (e: Exception) {
                 // Fallback: toggle pin directly if popup cannot be shown

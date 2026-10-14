@@ -4,6 +4,7 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.annotation.SuppressLint
 import android.content.ClipData
+import org.fossify.keyboard.services.SimpleKeyboardIME
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
@@ -437,39 +438,6 @@ class MyKeyboardView @JvmOverloads constructor(
                 (context as? android.inputmethodservice.InputMethodService)?.requestHideSelf(0)
             }
 
-            // Clipboard Panel actions
-            clipboardManagerClose.setOnClickListener {
-                vibrateIfNeeded()
-                closeAllPanels()
-            }
-
-            clipboardManagerManage.setOnClickListener {
-                vibrateIfNeeded()
-                Intent(context, ManageClipboardItemsActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(this)
-                }
-            }
-
-            clipboardManagerClearAll.setOnClickListener {
-                ensureBackgroundThread {
-                    val unpinned = context.clipsDB.getRecentClips()
-                    for (clip in unpinned) {
-                        ClipsHelper.clearSystemClipboardIfMatches(context, clip.value)
-                    }
-                    context.clipsDB.deleteAll()
-                    Handler(Looper.getMainLooper()).post {
-                        context.toast(R.string.clear_clipboard_data)
-                        setupStoredClips()
-                    }
-                }
-            }
-
-            clipboardManagerCollapse.setOnClickListener {
-                closeAllPanels()
-                (context as? android.inputmethodservice.InputMethodService)?.requestHideSelf(0)
-            }
-
             // Tools Menu actions (Image 90)
             toolsMenuClose.setOnClickListener {
                 vibrateIfNeeded()
@@ -712,19 +680,6 @@ class MyKeyboardView @JvmOverloads constructor(
 
 
         binding.apply {
-            clipboardManagerClose.setOnClickListener {
-                vibrateIfNeeded()
-                closeClipboardManager()
-            }
-
-            clipboardManagerManage.setOnLongClickListener { context.toast(R.string.manage_clipboard_items); true; }
-            clipboardManagerManage.setOnClickListener {
-                Intent(context, ManageClipboardItemsActivity::class.java).apply {
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    context.startActivity(this)
-                }
-            }
-
             emojiPaletteClose.setOnClickListener {
                 vibrateIfNeeded()
                 closeEmojiPalette()
@@ -789,21 +744,14 @@ class MyKeyboardView @JvmOverloads constructor(
             mToolbarHolder?.beInvisibleIf(context.isDeviceLocked)
 
             topClipboardDivider.beGone()
-            clipboardManagerTopBar.background = resources.getDrawable(R.drawable.bg_toolbar_neon, context.theme)
             clipboardManagerHolder.background = ColorDrawable(Color.parseColor("#060B14"))
             clipboardManagerHolder.layoutDirection = View.LAYOUT_DIRECTION_LTR
 
             val isArabic = context.config.keyboardLanguage == LANGUAGE_ARABIC
             val closeLabel = if (isArabic) "أ ب ج" else "ABC"
-            clipboardManagerClose.text = closeLabel
             toolsMenuClose.text = closeLabel
             cursorBtnAbc.text = closeLabel
 
-            clipboardManagerClose.setTextColor(Color.parseColor("#00D2FF"))
-            clipboardManagerManage.applyColorFilter(Color.parseColor("#00BCD4"))
-            clipboardManagerClearAll.applyColorFilter(Color.parseColor("#00BCD4"))
-
-            clipboardManagerLabel.setTextColor(Color.parseColor("#00D2FF"))
             clipboardContentPlaceholder1.setTextColor(Color.parseColor("#80A0C0"))
             clipboardContentPlaceholder2.setTextColor(Color.parseColor("#507090"))
         }
@@ -1178,6 +1126,11 @@ class MyKeyboardView @JvmOverloads constructor(
     fun handleClipboard() {
         if (mToolbarHolder != null && mPopupParent.id != R.id.mini_keyboard_view && context.config.showClipboardContent) {
             val clipboardContent = context.getCurrentClip()
+            val ime = (context as? SimpleKeyboardIME) ?: (mOnKeyboardActionListener as? SimpleKeyboardIME)
+            if (ime?.shouldIgnoreClip(clipboardContent) == true) {
+                hideClipboardViews()
+                return
+            }
             if (clipboardContent?.isNotEmpty() == true) {
                 keyboardViewBinding?.apply {
                     clipboardValue.apply {
@@ -1955,8 +1908,6 @@ class MyKeyboardView @JvmOverloads constructor(
         keyboardViewBinding?.apply {
             clipboardManagerHolder.layoutDirection = View.LAYOUT_DIRECTION_LTR
             clipsList.layoutDirection = View.LAYOUT_DIRECTION_RTL
-            val isArabic = context.config.keyboardLanguage == LANGUAGE_ARABIC
-            clipboardManagerClose.text = if (isArabic) "أ ب ج" else "ABC"
             clipboardManagerHolder.beVisible()
             suggestionsHolder.hideAllInlineContentViews()
         }
@@ -2024,45 +1975,64 @@ class MyKeyboardView @JvmOverloads constructor(
         }
     }
 
-    fun syncClipboard() {
-        if (!isShown) return
+    fun syncClipboard(onComplete: (() -> Unit)? = null) {
+        val ime = (context as? SimpleKeyboardIME) ?: (mOnKeyboardActionListener as? SimpleKeyboardIME)
+        if (ime != null && !ime.isDefaultIme()) {
+            onComplete?.invoke()
+            return
+        }
         try {
-            val currentIme = android.provider.Settings.Secure.getString(
-                context.contentResolver,
-                android.provider.Settings.Secure.DEFAULT_INPUT_METHOD
-            ) ?: return
-            if (!currentIme.contains(context.packageName)) return
+            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: run {
+                onComplete?.invoke()
+                return
+            }
+            val clip = try {
+                cm.primaryClip
+            } catch (e: Exception) {
+                null
+            } ?: run {
+                onComplete?.invoke()
+                return
+            }
+            if (clip.itemCount > 0) {
+                val textList = ArrayList<String>()
+                for (i in 0 until clip.itemCount) {
+                    val item = clip.getItemAt(i) ?: continue
+                    val clipText = item.text?.toString()?.trim()
+                        ?: item.coerceToText(context).toString().trim()
+                    if (clipText.isNotEmpty()) {
+                        if (ime?.shouldIgnoreClip(clipText) == true) {
+                            continue
+                        }
+                        textList.add(clipText)
+                    }
+                }
 
-            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
-            val clip = cm.primaryClip
-            if (clip != null && clip.itemCount > 0) {
-                ensureBackgroundThread {
-                    var addedAny = false
-                    for (i in 0 until clip.itemCount) {
-                        val clipText = clip.getItemAt(i)?.text?.toString()?.trim()
-                        if (!clipText.isNullOrEmpty()) {
+                if (textList.isNotEmpty()) {
+                    ensureBackgroundThread {
+                        for (clipText in textList) {
                             // If this text already exists in recent (unpinned) clips, delete the older copy so the new copy jumps to the top
                             context.clipsDB.deleteRecentClipWithValue(clipText)
 
                             // Insert the newly copied text as unpinned in Recent clips!
                             val newClip = Clip(null, clipText, isPinned = false)
                             context.clipsDB.insertOrUpdate(newClip)
-                            addedAny = true
                         }
-                    }
 
-                    if (addedAny) {
-                        // Keep up to 3500 unpinned items (accommodating >3000 clips)
+                        // Keep up to 4000 unpinned items (accommodating >3000 clips)
                         context.clipsDB.trimRecentClips()
 
                         Handler(Looper.getMainLooper()).post {
                             handleClipboard()
-                            setupStoredClips()
+                            onComplete?.invoke()
                         }
                     }
+                    return
                 }
             }
+            onComplete?.invoke()
         } catch (ignored: Exception) {
+            onComplete?.invoke()
         }
     }
 
@@ -2072,17 +2042,18 @@ class MyKeyboardView @JvmOverloads constructor(
             val pinnedClips = context.clipsDB.getPinnedClips()
             val recentClips = context.clipsDB.getRecentClips()
 
-            // Pinned clips appear at the top of the clipboard
-            if (pinnedClips.isNotEmpty()) {
-                val section = ClipsSectionLabel(context.getString(R.string.pinned_clips), false)
-                clips.add(section)
-                clips.addAll(pinnedClips)
-            }
-
+            // Recent (unpinned) clips appear at the top
             if (recentClips.isNotEmpty()) {
                 val section = ClipsSectionLabel(context.getString(R.string.recent_clips), false)
                 clips.add(section)
                 clips.addAll(recentClips)
+            }
+
+            // Pinned clips appear at the bottom
+            if (pinnedClips.isNotEmpty()) {
+                val section = ClipsSectionLabel(context.getString(R.string.pinned_clips), false)
+                clips.add(section)
+                clips.addAll(pinnedClips)
             }
 
             Handler(Looper.getMainLooper()).post {

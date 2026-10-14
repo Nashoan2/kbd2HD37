@@ -3,6 +3,8 @@
     <string name="app_launcher_name">Keyboard</string>
     <string name="redirection_note">Please enable Fossify Keyboard on the next screen, to make it an available keyboard. Press \'Back\' once enabled.</string>
     <string name="change_keyboard">Change Keyboard</string>
+    <string name="set_as_default_keyboard">Set as Default Keyboard</string>
+    <string name="default_keyboard_note">To copy text while the keyboard is hidden, please set this app as your default keyboard.</string>
     <!-- Clipboard -->
     <string name="manage_clipboard_items">Manage clipboard items</string>
     <string name="manage_clipboard_empty">Your clipboard is empty.</string>

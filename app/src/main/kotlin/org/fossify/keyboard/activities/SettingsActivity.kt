@@ -50,7 +50,6 @@ class SettingsActivity : SimpleActivity() {
         super.onResume()
         setupTopAppBar(binding.settingsAppbar, NavigationIcon.Arrow)
 
-        setupCustomizeColors()
         setupUseEnglish()
         setupLanguage()
         setupManageClipboardItems()
@@ -74,7 +73,6 @@ class SettingsActivity : SimpleActivity() {
             updateTextColors(settingsNestedScrollview)
 
             arrayOf(
-                settingsColorCustomizationSectionLabel,
                 settingsGeneralSettingsLabel,
                 settingsLayoutAppearanceLabel,
                 settingsKeypressLabel,
@@ -83,14 +81,6 @@ class SettingsActivity : SimpleActivity() {
                 settingsBackupRestoreLabel
             ).forEach {
                 it.setTextColor(getProperPrimaryColor())
-            }
-        }
-    }
-
-    private fun setupCustomizeColors() {
-        binding.apply {
-            settingsColorCustomizationHolder.setOnClickListener {
-                startCustomizationActivity()
             }
         }
     }

@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.ClipboardManager
 import android.content.Intent
 import android.content.SharedPreferences
+import android.database.ContentObserver
+import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import org.fossify.commons.helpers.ensureBackgroundThread
@@ -125,31 +127,100 @@ class SimpleKeyboardIME : InputMethodService(), OnKeyboardActionListener, Shared
 
     private var mClipboardManager: ClipboardManager? = null
     private var mClipboardListener: ClipboardManager.OnPrimaryClipChangedListener? = null
+    private var imeChangeObserver: ContentObserver? = null
+    private var isCurrentlyDefaultIme = false
+    private var activationTimestamp: Long = 0L
+    private var initialIgnoredClipFingerprint: String? = null
     private var lastSyncClipText: String? = null
     private var lastSyncTime: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
+        registerImeChangeObserver()
+        checkAndUpdateImeState()
     }
 
-    private fun isOurKeyboardActive(): Boolean {
+    private fun registerImeChangeObserver() {
+        if (imeChangeObserver != null) return
+        imeChangeObserver = object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                super.onChange(selfChange, uri)
+                checkAndUpdateImeState()
+            }
+        }
+        try {
+            val uri = Settings.Secure.getUriFor(Settings.Secure.DEFAULT_INPUT_METHOD)
+            contentResolver.registerContentObserver(uri, false, imeChangeObserver!!)
+        } catch (ignored: Exception) {
+        }
+    }
+
+    private fun unregisterImeChangeObserver() {
+        try {
+            imeChangeObserver?.let { contentResolver.unregisterContentObserver(it) }
+            imeChangeObserver = null
+        } catch (ignored: Exception) {
+        }
+    }
+
+    fun isDefaultIme(): Boolean {
         return try {
-            val currentIme = Settings.Secure.getString(
-                contentResolver,
-                Settings.Secure.DEFAULT_INPUT_METHOD
-            ) ?: return false
-            currentIme.contains(packageName)
+            val defaultIme = Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) ?: ""
+            defaultIme.contains(packageName)
         } catch (e: Exception) {
             false
         }
     }
 
-    private fun canCaptureClipboard(): Boolean {
-        return isInputViewShown && isOurKeyboardActive()
+    private fun checkAndUpdateImeState() {
+        val isDefault = isDefaultIme()
+        if (isDefault) {
+            if (!isCurrentlyDefaultIme) {
+                isCurrentlyDefaultIme = true
+                activationTimestamp = System.currentTimeMillis()
+                // Capture the fingerprint of whatever text was copied while using the other keyboard
+                initialIgnoredClipFingerprint = getSystemClipFingerprint()
+                initClipboardListener()
+            } else {
+                initClipboardListener()
+            }
+        } else {
+            isCurrentlyDefaultIme = false
+            initialIgnoredClipFingerprint = null
+            removeClipboardListener()
+        }
+    }
+
+    private fun getSystemClipFingerprint(): String? {
+        return try {
+            val cm = (getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager) ?: return null
+            val clip = cm.primaryClip ?: return null
+            if (clip.itemCount <= 0) return null
+            val sb = StringBuilder()
+            for (i in 0 until clip.itemCount) {
+                val item = clip.getItemAt(i) ?: continue
+                val text = item.text?.toString()?.trim()
+                    ?: item.coerceToText(this).toString().trim()
+                if (text.isNotEmpty()) {
+                    sb.append(text).append(":::")
+                }
+            }
+            if (sb.isEmpty()) null else sb.toString()
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    fun shouldIgnoreClip(text: String?): Boolean {
+        if (!isDefaultIme()) return true
+        val ignored = initialIgnoredClipFingerprint ?: return false
+        val trimmed = text?.trim() ?: return true
+        if (trimmed.isEmpty()) return true
+        return ignored == "$trimmed:::" || ignored == trimmed || ignored.contains("$trimmed:::")
     }
 
     private fun initClipboardListener() {
-        if (!canCaptureClipboard()) {
+        if (!isDefaultIme()) {
             removeClipboardListener()
             return
         }
@@ -157,11 +228,7 @@ class SimpleKeyboardIME : InputMethodService(), OnKeyboardActionListener, Shared
         try {
             mClipboardManager = getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager
             mClipboardListener = ClipboardManager.OnPrimaryClipChangedListener {
-                if (canCaptureClipboard()) {
-                    syncClipboardInternal()
-                } else {
-                    removeClipboardListener()
-                }
+                syncClipboardInternal()
             }
             mClipboardManager?.addPrimaryClipChangedListener(mClipboardListener)
         } catch (ignored: Exception) {
@@ -177,41 +244,62 @@ class SimpleKeyboardIME : InputMethodService(), OnKeyboardActionListener, Shared
     }
 
     private fun syncClipboardInternal() {
-        if (!canCaptureClipboard()) {
+        if (!isDefaultIme()) {
             removeClipboardListener()
             return
         }
+
         try {
             val cm = mClipboardManager ?: (getSystemService(CLIPBOARD_SERVICE) as? ClipboardManager) ?: return
-            val clip = cm.primaryClip ?: return
+            val clip = try {
+                cm.primaryClip
+            } catch (e: Exception) {
+                null
+            } ?: return
             if (clip.itemCount <= 0) return
 
-            val now = System.currentTimeMillis()
-            val firstItemText = clip.getItemAt(0)?.text?.toString()?.trim()
-            if (!firstItemText.isNullOrEmpty()) {
-                if (firstItemText == lastSyncClipText && (now - lastSyncTime) < 500L) {
-                    return
+            val textList = ArrayList<String>()
+            val fingerprintBuilder = StringBuilder()
+            for (i in 0 until clip.itemCount) {
+                val item = clip.getItemAt(i) ?: continue
+                val text = item.text?.toString()?.trim()
+                    ?: item.coerceToText(this).toString().trim()
+                if (text.isNotEmpty()) {
+                    textList.add(text)
+                    fingerprintBuilder.append(text).append(":::")
                 }
-                lastSyncClipText = firstItemText
-                lastSyncTime = now
             }
+            if (textList.isEmpty()) return
+
+            val currentFingerprint = fingerprintBuilder.toString()
+            if (initialIgnoredClipFingerprint != null && currentFingerprint == initialIgnoredClipFingerprint) {
+                return
+            }
+            if (initialIgnoredClipFingerprint != null && textList.all { shouldIgnoreClip(it) }) {
+                return
+            }
+            initialIgnoredClipFingerprint = null
+
+            val firstItemText = textList[0]
+            val now = System.currentTimeMillis()
+            if (firstItemText == lastSyncClipText && (now - lastSyncTime) < 200L) {
+                return
+            }
+            lastSyncClipText = firstItemText
+            lastSyncTime = now
 
             ensureBackgroundThread {
-                if (!canCaptureClipboard()) return@ensureBackgroundThread
                 var addedAny = false
-                for (i in 0 until clip.itemCount) {
-                    val clipText = clip.getItemAt(i)?.text?.toString()?.trim()
-                    if (!clipText.isNullOrEmpty()) {
-                        // Delete older copy from recent clips so this newly copied text moves to the top
-                        clipsDB.deleteRecentClipWithValue(clipText)
-                        val newClip = Clip(null, clipText, isPinned = false)
-                        clipsDB.insertOrUpdate(newClip)
-                        addedAny = true
-                    }
+                for (clipText in textList) {
+                    // Delete older copy from recent clips so this newly copied text moves to the top
+                    clipsDB.deleteRecentClipWithValue(clipText)
+                    val newClip = Clip(null, clipText, isPinned = false)
+                    clipsDB.insertOrUpdate(newClip)
+                    addedAny = true
                 }
 
                 if (addedAny) {
-                    // Retain up to 3500 unpinned items (surpassing the 3000 limit requested)
+                    // Retain up to 4000 unpinned items (surpassing the 3000 limit requested)
                     clipsDB.trimRecentClips()
 
                     Handler(Looper.getMainLooper()).post {
@@ -249,13 +337,8 @@ class SimpleKeyboardIME : InputMethodService(), OnKeyboardActionListener, Shared
 
     override fun onStartInputView(editorInfo: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(editorInfo, restarting)
-        if (canCaptureClipboard()) {
-            initClipboardListener()
-        } else {
-            removeClipboardListener()
-        }
+        checkAndUpdateImeState()
         updateBackgroundColors()
-        // Do NOT auto-import system clipboard from other keyboards on start
         if (inputTypeClass == TYPE_CLASS_NUMBER || inputTypeClass == TYPE_CLASS_PHONE) {
             keyboardView?.openNumericKeypad()
         } else {
@@ -272,40 +355,29 @@ class SimpleKeyboardIME : InputMethodService(), OnKeyboardActionListener, Shared
 
     override fun onFinishInputView(finishingInput: Boolean) {
         super.onFinishInputView(finishingInput)
-        removeClipboardListener()
-        keyboardView?.unregisterClipboardListener()
         keyboardView?.closeAllPanels()
         keyboardMode = KEYBOARD_LETTERS
     }
 
     override fun onFinishInput() {
         super.onFinishInput()
-        removeClipboardListener()
-        keyboardView?.unregisterClipboardListener()
     }
 
     override fun onWindowHidden() {
         super.onWindowHidden()
-        removeClipboardListener()
-        keyboardView?.unregisterClipboardListener()
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
-        removeClipboardListener()
-        keyboardView?.unregisterClipboardListener()
         return super.onUnbind(intent)
     }
 
     override fun onTrimMemory(level: Int) {
         super.onTrimMemory(level)
-        if (!isInputViewShown) {
-            removeClipboardListener()
-            keyboardView?.unregisterClipboardListener()
-        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
+        unregisterImeChangeObserver()
         removeClipboardListener()
         mClipboardManager = null
         keyboardView?.unregisterClipboardListener()
@@ -324,6 +396,7 @@ class SimpleKeyboardIME : InputMethodService(), OnKeyboardActionListener, Shared
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        checkAndUpdateImeState()
         val newInputTypeClass = attribute?.inputType?.and(TYPE_MASK_CLASS) ?: TYPE_CLASS_TEXT
         val newInputTypeClassVariation = attribute?.inputType?.and(TYPE_MASK_VARIATION) ?: 0
         val newEnterKeyType = attribute?.imeOptions?.and(IME_MASK_ACTION or IME_FLAG_NO_ENTER_ACTION) ?: 0
@@ -628,18 +701,14 @@ class SimpleKeyboardIME : InputMethodService(), OnKeyboardActionListener, Shared
     override fun copyText() {
         currentInputConnection?.performContextMenuAction(android.R.id.copy)
         binding.root.postDelayed({
-            if (canCaptureClipboard()) {
-                syncClipboardInternal()
-            }
+            syncClipboardInternal()
         }, 150L)
     }
 
     override fun cutText() {
         currentInputConnection?.performContextMenuAction(android.R.id.cut)
         binding.root.postDelayed({
-            if (canCaptureClipboard()) {
-                syncClipboardInternal()
-            }
+            syncClipboardInternal()
         }, 150L)
     }
 
